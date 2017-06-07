@@ -3,11 +3,11 @@ namespace Mdrost\HttpClient;
 
 use Mdrost\HttpClient\Exception\BadResponseException;
 use Mdrost\HttpClient\Exception\TooManyRedirectsException;
-use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
+use React\Promise\PromiseInterface;
 
 /**
  * Request redirect middleware.

@@ -1,9 +1,14 @@
 <?php
 namespace Mdrost\HttpClient\Tests;
 
+use function Clue\React\Block\await;
 use Mdrost\HttpClient\Client;
+use Mdrost\HttpClient\HandlerStack;
+use Mdrost\HttpClient\Handler\ReactHandler;
 use GuzzleHttp\Psr7;
 use Psr\Http\Message\ResponseInterface;
+use React\EventLoop\Factory as LoopFactory;
+use React\EventLoop\LoopInterface;
 
 /**
  * The Server class is used to control a scripted webserver using node.js that
@@ -21,6 +26,8 @@ use Psr\Http\Message\ResponseInterface;
  */
 class Server
 {
+    /** @var LoopInterface */
+    private static $loop;
     /** @var Client */
     private static $client;
     private static $started = false;
@@ -33,7 +40,7 @@ class Server
      */
     public static function flush()
     {
-        return self::getClient()->request('DELETE', 'guzzle-server/requests');
+        return await(self::getClient()->request('DELETE', 'guzzle-server/requests'), self::getLoop());
     }
 
     /**
@@ -65,9 +72,9 @@ class Server
             ];
         }
 
-        self::getClient()->request('PUT', 'guzzle-server/responses', [
+        await(self::getClient()->request('PUT', 'guzzle-server/responses', [
             'json' => $data
-        ]);
+        ]), self::getLoop());
     }
 
     /**
@@ -82,7 +89,7 @@ class Server
             return [];
         }
 
-        $response = self::getClient()->request('GET', 'guzzle-server/requests');
+        $response = await(self::getClient()->request('GET', 'guzzle-server/requests'), self::getLoop());
         $data = json_decode($response->getBody(), true);
 
         return array_map(
@@ -114,7 +121,7 @@ class Server
     public static function stop()
     {
         if (self::$started) {
-            self::getClient()->request('DELETE', 'guzzle-server');
+            await(self::getClient()->request('DELETE', 'guzzle-server'), self::getLoop());
         }
 
         self::$started = false;
@@ -150,23 +157,39 @@ class Server
     private static function isListening()
     {
         try {
-            self::getClient()->request('GET', 'guzzle-server/perf', [
+            await(self::getClient()->request('GET', 'guzzle-server/perf', [
                 'connect_timeout' => 5,
                 'timeout'         => 5
-            ]);
+            ]), self::getLoop());
             return true;
         } catch (\Exception $e) {
             return false;
         }
     }
 
+    private static function getLoop(): LoopInterface
+    {
+        if (!self::$loop) {
+            self::$loop = LoopFactory::create();
+        }
+        return self::$loop;
+    }
+
     private static function getClient()
     {
         if (!self::$client) {
             self::$client = new Client([
+                'handler' => HandlerStack::create(ReactHandler::createFromLoop(self::getLoop())),
                 'base_uri' => self::$url,
                 'sync'     => true,
             ]);
+            // self::$client = Client::createFromLoop(
+            //     self::getLoop(),
+            //     [
+            //         'base_uri' => self::$url,
+            //         'sync'     => true,
+            //     ]
+            // );
         }
 
         return self::$client;

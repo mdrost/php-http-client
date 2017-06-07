@@ -1,18 +1,28 @@
 <?php
 namespace Mdrost\HttpClient\Tests;
 
+use function Clue\React\Block\await;
 use Mdrost\HttpClient\Handler\MockHandler;
 use Mdrost\HttpClient\HandlerStack;
 use Mdrost\HttpClient\Middleware;
-use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\FnStream;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Psr\Http\Message\RequestInterface;
+use React\EventLoop\Factory as LoopFactory;
+use React\EventLoop\LoopInterface;
+use React\Promise\PromiseInterface;
 
 class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
 {
+    /** @var LoopInterface */
+    private $loop;
+
+    public function setUp()
+    {
+        $this->loop = LoopFactory::create();
+    }
 
     public function methodProvider()
     {
@@ -46,7 +56,7 @@ class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
         $comp = $stack->resolve();
         $p = $comp(new Request($method, 'http://www.google.com', [], $body), []);
         $this->assertInstanceOf(PromiseInterface::class, $p);
-        $response = $p->wait();
+        $response = await($p, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 
@@ -68,7 +78,7 @@ class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
         $comp = $stack->resolve();
         $p = $comp(new Request('PUT', 'http://www.google.com', [], $body), []);
         $this->assertInstanceOf(PromiseInterface::class, $p);
-        $response = $p->wait();
+        $response = await($p, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 
@@ -88,7 +98,7 @@ class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
         $comp = $stack->resolve();
         $p = $comp(new Request('PUT', 'http://www.google.com', [], $bd), []);
         $this->assertInstanceOf(PromiseInterface::class, $p);
-        $response = $p->wait();
+        $response = await($p, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 
@@ -124,7 +134,7 @@ class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
             'expect' => $value
         ]);
         $this->assertInstanceOf(PromiseInterface::class, $p);
-        $response = $p->wait();
+        $response = await($p, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 
@@ -147,7 +157,7 @@ class PrepareBodyMiddlewareTest extends \PHPUnit_Framework_TestCase
             ['expect' => true]
         );
         $this->assertInstanceOf(PromiseInterface::class, $p);
-        $response = $p->wait();
+        $response = await($p, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 }

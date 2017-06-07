@@ -17,6 +17,11 @@ use Psr\Http\Message\ResponseInterface;
  */
 class StreamHandlerTest extends \PHPUnit_Framework_TestCase
 {
+    protected function setUp()
+    {
+        $this->markTestSkipped();
+    }
+
     private function queueRes()
     {
         Server::flush();

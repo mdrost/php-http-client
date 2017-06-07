@@ -1,6 +1,7 @@
 <?php
 namespace Mdrost\HttpClient\Tests;
 
+use function Clue\React\Block\await;
 use Mdrost\HttpClient\Client;
 use Mdrost\HttpClient\Handler\MockHandler;
 use Mdrost\HttpClient\Middleware;
@@ -8,9 +9,19 @@ use GuzzleHttp\Psr7;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Mdrost\HttpClient\RetryMiddleware;
+use React\EventLoop\Factory as LoopFactory;
+use React\EventLoop\LoopInterface;
 
 class RetryMiddlewareTest extends \PHPUnit_Framework_TestCase
 {
+    /** @var LoopInterface */
+    private $loop;
+
+    public function setUp()
+    {
+        $this->loop = LoopFactory::create();
+    }
+
     public function testRetriesWhenDeciderReturnsTrue()
     {
         $delayCalls = 0;
@@ -29,11 +40,11 @@ class RetryMiddlewareTest extends \PHPUnit_Framework_TestCase
         $h = new MockHandler([new Response(200), new Response(201), new Response(202)]);
         $f = $m($h);
         $c = new Client(['handler' => $f]);
-        $p = $c->sendAsync(new Request('GET', 'http://test.com'), []);
-        $p->wait();
+        $p = $c->send(new Request('GET', 'http://test.com'), []);
+        await($p, $this->loop);
         $this->assertCount(3, $calls);
         $this->assertEquals(2, $delayCalls);
-        $this->assertEquals(202, $p->wait()->getStatusCode());
+        $this->assertEquals(202, await($p, $this->loop)->getStatusCode());
     }
 
     public function testDoesNotRetryWhenDeciderReturnsFalse()
@@ -42,8 +53,8 @@ class RetryMiddlewareTest extends \PHPUnit_Framework_TestCase
         $m = Middleware::retry($decider);
         $h = new MockHandler([new Response(200)]);
         $c = new Client(['handler' => $m($h)]);
-        $p = $c->sendAsync(new Request('GET', 'http://test.com'), []);
-        $this->assertEquals(200, $p->wait()->getStatusCode());
+        $p = $c->send(new Request('GET', 'http://test.com'), []);
+        $this->assertEquals(200, await($p, $this->loop)->getStatusCode());
     }
 
     public function testCanRetryExceptions()
@@ -56,8 +67,8 @@ class RetryMiddlewareTest extends \PHPUnit_Framework_TestCase
         $m = Middleware::retry($decider);
         $h = new MockHandler([new \Exception(), new Response(201)]);
         $c = new Client(['handler' => $m($h)]);
-        $p = $c->sendAsync(new Request('GET', 'http://test.com'), []);
-        $this->assertEquals(201, $p->wait()->getStatusCode());
+        $p = $c->send(new Request('GET', 'http://test.com'), []);
+        $this->assertEquals(201, await($p, $this->loop)->getStatusCode());
         $this->assertCount(2, $calls);
         $this->assertEquals(0, $calls[0][0]);
         $this->assertNull($calls[0][2]);

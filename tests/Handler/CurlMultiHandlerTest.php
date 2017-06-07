@@ -8,6 +8,11 @@ use Mdrost\HttpClient\Tests\Server;
 
 class CurlMultiHandlerTest extends \PHPUnit_Framework_TestCase
 {
+    protected function setUp()
+    {
+        $this->markTestSkipped();
+    }
+
     public function testSendsRequest()
     {
         Server::enqueue([new Response()]);

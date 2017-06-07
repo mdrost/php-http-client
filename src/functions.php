@@ -4,6 +4,7 @@ namespace Mdrost\HttpClient;
 use Mdrost\HttpClient\Handler\CurlHandler;
 use Mdrost\HttpClient\Handler\CurlMultiHandler;
 use Mdrost\HttpClient\Handler\Proxy;
+use Mdrost\HttpClient\Handler\ReactHandler;
 use Mdrost\HttpClient\Handler\StreamHandler;
 
 /**

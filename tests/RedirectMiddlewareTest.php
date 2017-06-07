@@ -1,6 +1,7 @@
 <?php
 namespace Mdrost\HttpClient\Tests;
 
+use function Clue\React\Block\await;
 use Mdrost\HttpClient\Client;
 use Mdrost\HttpClient\Handler\MockHandler;
 use Mdrost\HttpClient\HandlerStack;
@@ -9,12 +10,22 @@ use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use Mdrost\HttpClient\RedirectMiddleware;
 use Psr\Http\Message\RequestInterface;
+use React\EventLoop\Factory as LoopFactory;
+use React\EventLoop\LoopInterface;
 
 /**
  * @covers Mdrost\HttpClient\RedirectMiddleware
  */
 class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
 {
+    /** @var LoopInterface */
+    private $loop;
+
+    public function setUp()
+    {
+        $this->loop = LoopFactory::create();
+    }
+
     public function testIgnoresNonRedirects()
     {
         $response = new Response(200);
@@ -23,7 +34,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $handler = $stack->resolve();
         $request = new Request('GET', 'http://example.com');
         $promise = $handler($request, []);
-        $response = $promise->wait();
+        $response = await($promise, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
     }
 
@@ -35,7 +46,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $handler = $stack->resolve();
         $request = new Request('GET', 'http://example.com');
         $promise = $handler($request, []);
-        $response = $promise->wait();
+        $response = await($promise, $this->loop);
         $this->assertEquals(304, $response->getStatusCode());
     }
 
@@ -52,7 +63,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['max' => 2]
         ]);
-        $response = $promise->wait();
+        $response = await($promise, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('http://test.com', $mock->getLastRequest()->getUri());
     }
@@ -70,7 +81,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['max' => 2]
         ]);
-        $response = $promise->wait();
+        $response = await($promise, $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
         $this->assertEquals('http://example.com/foo', $mock->getLastRequest()->getUri());
     }
@@ -92,7 +103,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $handler = $stack->resolve();
         $request = new Request('GET', 'http://example.com');
         $promise = $handler($request, ['allow_redirects' => ['max' => 3]]);
-        $promise->wait();
+        await($promise, $this->loop);
     }
 
     /**
@@ -108,7 +119,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $stack->push(Middleware::redirect());
         $handler = $stack->resolve();
         $request = new Request('GET', 'http://example.com');
-        $handler($request, ['allow_redirects' => ['max' => 3]])->wait();
+        await($handler($request, ['allow_redirects' => ['max' => 3]]), $this->loop);
     }
 
     public function testAddsRefererHeader()
@@ -124,7 +135,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['max' => 2, 'referer' => true]
         ]);
-        $promise->wait();
+        await($promise, $this->loop);
         $this->assertEquals(
             'http://example.com?a=b',
             $mock->getLastRequest()->getHeaderLine('Referer')
@@ -147,7 +158,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['track_redirects' => true]
         ]);
-        $response = $promise->wait(true);
+        $response = await($promise, $this->loop);
         $this->assertEquals(
             [
                 'http://example.com',
@@ -175,7 +186,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['track_redirects' => true]
         ]);
-        $response = $promise->wait(true);
+        $response = await($promise, $this->loop);
         $this->assertEquals(
             [
                 301,
@@ -200,7 +211,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         $promise = $handler($request, [
             'allow_redirects' => ['max' => 2, 'referer' => true]
         ]);
-        $promise->wait();
+        await($promise, $this->loop);
         $this->assertFalse($mock->getLastRequest()->hasHeader('Referer'));
     }
 
@@ -226,7 +237,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
                 }
             ]
         ]);
-        $promise->wait();
+        await($promise, $this->loop);
         $this->assertTrue($call);
     }
 
@@ -241,7 +252,7 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         ]);
         $handler = HandlerStack::create($mock);
         $client = new Client(['handler' => $handler]);
-        $client->get('http://example.com?a=b', ['auth' => ['testuser', 'testpass']]);
+        await($client->request('GET', 'http://example.com?a=b', ['auth' => ['testuser', 'testpass']]), $this->loop);
     }
 
     public function testNotRemoveAuthorizationHeaderOnRedirect()
@@ -255,6 +266,6 @@ class RedirectMiddlewareTest extends \PHPUnit_Framework_TestCase
         ]);
         $handler = HandlerStack::create($mock);
         $client = new Client(['handler' => $handler]);
-        $client->get('http://example.com?a=b', ['auth' => ['testuser', 'testpass']]);
+        await($client->request('GET', 'http://example.com?a=b', ['auth' => ['testuser', 'testpass']]), $this->loop);
     }
 }

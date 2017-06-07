@@ -13,6 +13,11 @@ use Mdrost\HttpClient\Tests\Server;
  */
 class CurlHandlerTest extends \PHPUnit_Framework_TestCase
 {
+    protected function setUp()
+    {
+        $this->markTestSkipped();
+    }
+
     protected function getHandler($options = [])
     {
         return new CurlHandler($options);

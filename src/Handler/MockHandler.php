@@ -3,11 +3,10 @@ namespace Mdrost\HttpClient\Handler;
 
 use Mdrost\HttpClient\Exception\RequestException;
 use Mdrost\HttpClient\HandlerStack;
-use GuzzleHttp\Promise\PromiseInterface;
-use GuzzleHttp\Promise\RejectedPromise;
 use Mdrost\HttpClient\TransferStats;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use React\Promise\PromiseInterface;
 
 /**
  * Handler that returns responses or throw exceptions from a queue.
@@ -91,8 +90,8 @@ class MockHandler implements \Countable
         }
 
         $response = $response instanceof \Exception
-            ? \GuzzleHttp\Promise\rejection_for($response)
-            : \GuzzleHttp\Promise\promise_for($response);
+            ? \React\Promise\reject($response)
+            : \React\Promise\resolve($response);
 
         return $response->then(
             function ($value) use ($request, $options) {
@@ -120,7 +119,7 @@ class MockHandler implements \Countable
                 if ($this->onRejected) {
                     call_user_func($this->onRejected, $reason);
                 }
-                return \GuzzleHttp\Promise\rejection_for($reason);
+                return \React\Promise\reject($reason);
             }
         );
     }

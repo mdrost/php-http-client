@@ -1,14 +1,25 @@
 <?php
 namespace Mdrost\HttpClient\Tests;
 
+use function Clue\React\Block\await;
 use Mdrost\HttpClient\Cookie\CookieJar;
 use Mdrost\HttpClient\Handler\MockHandler;
 use Mdrost\HttpClient\HandlerStack;
 use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
+use React\EventLoop\Factory as LoopFactory;
+use React\EventLoop\LoopInterface;
 
 class HandlerStackTest extends \PHPUnit_Framework_TestCase
 {
+    /** @var LoopInterface */
+    private $loop;
+
+    public function setUp()
+    {
+        $this->loop = LoopFactory::create();
+    }
+
     public function testSetsHandlerInCtor()
     {
         $f = function () {};
@@ -155,10 +166,10 @@ class HandlerStackTest extends \PHPUnit_Framework_TestCase
         $handler = HandlerStack::create($mock);
         $request = new Request('GET', 'http://foo.com/bar');
         $jar = new CookieJar();
-        $response = $handler($request, [
+        $response = await($handler($request, [
             'allow_redirects' => true,
             'cookies' => $jar
-        ])->wait();
+        ]), $this->loop);
         $this->assertEquals(200, $response->getStatusCode());
         $lastRequest = $mock->getLastRequest();
         $this->assertEquals('http://foo.com/baz', (string) $lastRequest->getUri());

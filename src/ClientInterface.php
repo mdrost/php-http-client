@@ -1,11 +1,11 @@
 <?php
 namespace Mdrost\HttpClient;
 
-use GuzzleHttp\Promise\PromiseInterface;
 use GuzzleHttp\Exception\GuzzleException;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\UriInterface;
+use React\Promise\PromiseInterface;
 
 /**
  * Client interface for sending HTTP requests.
@@ -13,18 +13,6 @@ use Psr\Http\Message\UriInterface;
 interface ClientInterface
 {
     const VERSION = '6.2.1';
-
-    /**
-     * Send an HTTP request.
-     *
-     * @param RequestInterface $request Request to send
-     * @param array            $options Request options to apply to the given
-     *                                  request and to the transfer.
-     *
-     * @return ResponseInterface
-     * @throws GuzzleException
-     */
-    public function send(RequestInterface $request, array $options = []);
 
     /**
      * Asynchronously send an HTTP request.
@@ -35,23 +23,7 @@ interface ClientInterface
      *
      * @return PromiseInterface
      */
-    public function sendAsync(RequestInterface $request, array $options = []);
-
-    /**
-     * Create and send an HTTP request.
-     *
-     * Use an absolute path to override the base path of the client, or a
-     * relative path to append to the base path of the client. The URL can
-     * contain the query string as well.
-     *
-     * @param string              $method  HTTP method.
-     * @param string|UriInterface $uri     URI object or string.
-     * @param array               $options Request options to apply.
-     *
-     * @return ResponseInterface
-     * @throws GuzzleException
-     */
-    public function request($method, $uri, array $options = []);
+    public function send(RequestInterface $request, array $options = []): PromiseInterface;
 
     /**
      * Create and send an asynchronous HTTP request.
@@ -67,7 +39,7 @@ interface ClientInterface
      *
      * @return PromiseInterface
      */
-    public function requestAsync($method, $uri, array $options = []);
+    public function request($method, $uri, array $options = []): PromiseInterface;
 
     /**
      * Get a client configuration option.

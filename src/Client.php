@@ -2,26 +2,13 @@
 namespace Mdrost\HttpClient;
 
 use Mdrost\HttpClient\Cookie\CookieJar;
-use GuzzleHttp\Promise;
 use GuzzleHttp\Psr7;
 use Psr\Http\Message\UriInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use React\Promise;
+use React\Promise\PromiseInterface;
 
-/**
- * @method ResponseInterface get(string|UriInterface $uri, array $options = [])
- * @method ResponseInterface head(string|UriInterface $uri, array $options = [])
- * @method ResponseInterface put(string|UriInterface $uri, array $options = [])
- * @method ResponseInterface post(string|UriInterface $uri, array $options = [])
- * @method ResponseInterface patch(string|UriInterface $uri, array $options = [])
- * @method ResponseInterface delete(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface getAsync(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface headAsync(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface putAsync(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface postAsync(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface patchAsync(string|UriInterface $uri, array $options = [])
- * @method Promise\PromiseInterface deleteAsync(string|UriInterface $uri, array $options = [])
- */
 class Client implements ClientInterface
 {
     /** @var array Default request options */
@@ -45,7 +32,7 @@ class Client implements ClientInterface
      * - handler: (callable) Function that transfers HTTP requests over the
      *   wire. The function is called with a Psr7\Http\Message\RequestInterface
      *   and array of transfer options, and must return a
-     *   GuzzleHttp\Promise\PromiseInterface that is fulfilled with a
+     *   React\Promise\PromiseInterface that is fulfilled with a
      *   Psr7\Http\Message\ResponseInterface on success. "handler" is a
      *   constructor only option that cannot be overridden in per/request
      *   options. If no handler is provided, a default handler will be created
@@ -75,21 +62,7 @@ class Client implements ClientInterface
         $this->configureDefaults($config);
     }
 
-    public function __call($method, $args)
-    {
-        if (count($args) < 1) {
-            throw new \InvalidArgumentException('Magic request methods require a URI and optional options array');
-        }
-
-        $uri = $args[0];
-        $opts = isset($args[1]) ? $args[1] : [];
-
-        return substr($method, -5) === 'Async'
-            ? $this->requestAsync(substr($method, 0, -5), $uri, $opts)
-            : $this->request($method, $uri, $opts);
-    }
-
-    public function sendAsync(RequestInterface $request, array $options = [])
+    public function send(RequestInterface $request, array $options = []): PromiseInterface
     {
         // Merge the base URI into the request URI if needed.
         $options = $this->prepareDefaults($options);
@@ -100,13 +73,7 @@ class Client implements ClientInterface
         );
     }
 
-    public function send(RequestInterface $request, array $options = [])
-    {
-        $options[RequestOptions::SYNCHRONOUS] = true;
-        return $this->sendAsync($request, $options)->wait();
-    }
-
-    public function requestAsync($method, $uri = '', array $options = [])
+    public function request($method, $uri = '', array $options = []): PromiseInterface
     {
         $options = $this->prepareDefaults($options);
         // Remove request modifying parameter because it can be done up-front.
@@ -125,12 +92,6 @@ class Client implements ClientInterface
         return $this->transfer($request, $options);
     }
 
-    public function request($method, $uri = '', array $options = [])
-    {
-        $options[RequestOptions::SYNCHRONOUS] = true;
-        return $this->requestAsync($method, $uri, $options)->wait();
-    }
-
     public function getConfig($option = null)
     {
         return $option === null
@@ -138,7 +99,7 @@ class Client implements ClientInterface
             : (isset($this->config[$option]) ? $this->config[$option] : null);
     }
 
-    private function buildUri($uri, array $config)
+    private function buildUri($uri, array $config): UriInterface
     {
         // for BC we accept null which would otherwise fail in uri_for
         $uri = Psr7\uri_for($uri === null ? '' : $uri);
@@ -210,7 +171,7 @@ class Client implements ClientInterface
      *
      * @return array
      */
-    private function prepareDefaults($options)
+    private function prepareDefaults($options): array
     {
         $defaults = $this->config;
 
@@ -254,9 +215,9 @@ class Client implements ClientInterface
      * @param RequestInterface $request
      * @param array            $options
      *
-     * @return Promise\PromiseInterface
+     * @return PromiseInterface
      */
-    private function transfer(RequestInterface $request, array $options)
+    private function transfer(RequestInterface $request, array $options): PromiseInterface
     {
         // save_to -> sink
         if (isset($options['save_to'])) {
@@ -274,9 +235,9 @@ class Client implements ClientInterface
         $handler = $options['handler'];
 
         try {
-            return Promise\promise_for($handler($request, $options));
+            return Promise\resolve($handler($request, $options));
         } catch (\Exception $e) {
-            return Promise\rejection_for($e);
+            return Promise\reject($e);
         }
     }
 
